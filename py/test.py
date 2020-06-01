@@ -3,6 +3,8 @@
 import pyxsi
 import random
 
+# VHDL uses 1ps timestep by default. This results in a 100 MHz clock.
+HALF_PERIOD = 5000
 
 def test_counting():
     xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so")
@@ -12,9 +14,9 @@ def test_counting():
 
     for n in range(65535):
         xsi.set_port_value("clk", "1")
-        xsi.run(1)
+        xsi.run(HALF_PERIOD)
         xsi.set_port_value("clk", "0")
-        xsi.run(1)
+        xsi.run(HALF_PERIOD)
 
         xsi.set_port_value("a", f"{n:016b}")
         xsi.set_port_value("b", f"{n:016b}")
@@ -40,9 +42,9 @@ def test_random():
 
     for n in range(65535):
         xsi.set_port_value("clk", "1")
-        xsi.run(1)
+        xsi.run(HALF_PERIOD)
         xsi.set_port_value("clk", "0")
-        xsi.run(1)
+        xsi.run(HALF_PERIOD)
 
         xsi.set_port_value("a", f"{random.randint(0, 65536):016b}")
         xsi.set_port_value("b", f"{random.randint(0, 65536):016b}")
