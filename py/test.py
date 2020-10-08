@@ -6,8 +6,34 @@ import random
 # VHDL uses 1ps timestep by default. This results in a 100 MHz clock.
 HALF_PERIOD = 5000
 
+
+def test_doom():
+    xsi = pyxsi.XSI("xsim.dir/assert_test/xsimk.so",
+            tracefile="doom.wdb",
+            logfile="doom.log")
+    xsi.trace_all()
+
+    for n in range(10):
+        xsi.set_port_value("clk", "1")
+        xsi.run(HALF_PERIOD)
+        xsi.set_port_value("clk", "0")
+        xsi.run(HALF_PERIOD)
+
+    xsi.set_port_value("doom", "1")
+
+    for n in range(10):
+        xsi.set_port_value("clk", "1")
+        xsi.run(HALF_PERIOD)
+        xsi.set_port_value("clk", "0")
+        xsi.run(HALF_PERIOD)
+
+    assert False, "Simulator should not have asserted silently!"
+
+
 def test_counting():
-    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so")
+    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so",
+            tracefile="counting.wdb",
+            logfile="counting.log")
     xsi.trace_all()
 
     (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
@@ -35,7 +61,9 @@ def test_counting():
 
 
 def test_random():
-    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so")
+    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so",
+            tracefile="random.wdb",
+            logfile="random.log")
     xsi.trace_all()
 
     (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
@@ -46,8 +74,8 @@ def test_random():
         xsi.set_port_value("clk", "0")
         xsi.run(HALF_PERIOD)
 
-        xsi.set_port_value("a", f"{random.randint(0, 65536):016b}")
-        xsi.set_port_value("b", f"{random.randint(0, 65536):016b}")
+        xsi.set_port_value("a", f"{random.randint(0, 65535):016b}")
+        xsi.set_port_value("b", f"{random.randint(0, 65535):016b}")
 
         a = xsi.get_port_value("a")
         b = xsi.get_port_value("b")

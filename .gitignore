@@ -1,9 +1,9 @@
 *.swp
 *.jou
 *.log
+*.wdb
 *.o
 __pycache__
 pyxsi.so
 xelab.pb
 xsim.dir
-xsim.wdb

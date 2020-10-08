@@ -16,9 +16,10 @@ pyxsi.so: pybind.o xsi_loader.o
 
 rtl:
 	xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget
+	xelab work.assert_test -prj rtl/assert_test.prj -debug all -dll -s assert_test
 
 test: pyxsi.so
-	LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(XILINX_VIVADO)/lib/lnx64.o python3.8 -m pytest py/test.py -s
+	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o python3.8 -m pytest py/test.py -v
 
 clean:
 	-rm *.o *.so
