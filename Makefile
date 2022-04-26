@@ -28,7 +28,7 @@ rtl:
 
 test: pyxsi.so
 	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o \
-		python3.9 -m pytest py/test.py -v -s
+		python3.9 -m pytest py/test.py -v
 
 clean:
 	-rm *.o *.so
