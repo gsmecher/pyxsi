@@ -1,3 +1,6 @@
+XILINX_BASE := /opt/xilinx
+XILINX_VIVADO := $(XILINX_BASE)/Vivado/2021.2
+
 # See if we're inside docker. If not, wrap ourselves in docker and try again.
 ifeq ($(wildcard /.dockerenv),)
 include Makefile.docker-boilerplate
@@ -8,8 +11,6 @@ else
 default: pyxsi.so
 
 .PHONY: rtl test clean
-
-XILINX_VIVADO := /opt/xilinx/Vivado/2021.2
 
 VPATH=src
 

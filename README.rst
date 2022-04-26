@@ -1,7 +1,7 @@
 C/RTL Cosimulation with Vivado and Python
 =========================================
 
-:date: 2020-06-01
+:date: 2020-06-01, 2022-04-26
 :tags: Vivado, xsim, XSI
 :category: Vivado
 :slug: vivado-cosimulation-with-xsi
@@ -57,23 +57,42 @@ Source code is available at https://github.com/gsmecher/pyxsi.
    remote: Total 14 (delta 0), reused 14 (delta 0), pack-reused 0
    Receiving objects: 100% (14/14), 6.72 KiB | 6.72 MiB/s, done.
 
-Build the RTL
--------------
+Prepare the Build
+-----------------
 
-Now set up Xilinx's environment variables and build the RTL into a simulation library:
+You should modify the top-level Makefile (setting XILINX_BASE) to match your Vivado installation.
+The example here uses Vivado 2021.2, though it is reasonably portable.
+
+Next, prepare your Docker environment:
 
 .. code-block:: bash
 
    $ cd pyxsi
-   pyxsi$ . /opt/xilinx/Vivado/2019.2/settings64.sh
+   pyxsi$ make dockerenv
+
+This step prepares a portable build environment using Docker.
+You only need to run this step once.
+
+Build the RTL
+-------------
+
+Now set up Xilinx's environment variables and build the RTL into a simulation library.
+
+There is a Docker wrapper in this command (and subsequent commands). You may need to modify the top-level Makefile to point to the right Vivado installation path.
+
+.. code-block:: bash
+
    pyxsi$ make rtl
-   xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget
-   Vivado Simulator 2019.2
-   Copyright 1986-1999, 2001-2019 Xilinx, Inc. All Rights Reserved.
-   Running: /opt/xilinx/Vivado/2019.2/bin/unwrapped/lnx64.o/xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget 
-   Multi-threading is on. Using 2 slave threads.
+   Moving inside Docker...
+   make: Entering directory '/root'
+   . /opt/xilinx/Vivado/2021.2/settings64.sh && \
+        xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget
+   Vivado Simulator v2021.2
+   Copyright 1986-1999, 2001-2021 Xilinx, Inc. All Rights Reserved.
+   Running: /opt/xilinx/Vivado/2021.2/bin/unwrapped/lnx64.o/xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget
+   Multi-threading is on. Using 14 slave threads.
    Determining compilation order of HDL files.
-   INFO: [VRFC 10-163] Analyzing VHDL file "/home/foo/bar/baz/pyxsi/rtl/widget.vhd" into library work
+   INFO: [VRFC 10-163] Analyzing VHDL file "/root/rtl/widget.vhd" into library work
    INFO: [VRFC 10-3107] analyzing entity 'widget'
    Starting static elaboration
    Completed static elaboration
@@ -86,6 +105,7 @@ Now set up Xilinx's environment variables and build the RTL into a simulation li
    Compiling package ieee.numeric_std
    Compiling architecture behav of entity work.widget
    Built XSI simulation shared library xsim.dir/widget/xsimk.so
+   make: Leaving directory '/root'
 
 Build the C++ Code
 ------------------
@@ -95,9 +115,11 @@ Now build the C++ code:
 .. code-block:: bash
 
    pyxsi$ make
-   g++ -fPIC -std=c++17 -I/usr/include/python3.8 -I/opt/xilinx/Vivado/2019.2/data/xsim/include -Isrc -c -o pybind.o src/pybind.cpp
-   g++ -fPIC -std=c++17 -I/usr/include/python3.8 -I/opt/xilinx/Vivado/2019.2/data/xsim/include -Isrc -c -o xsi_loader.o src/xsi_loader.cpp
-   g++ -fPIC -std=c++17 -I/usr/include/python3.8 -I/opt/xilinx/Vivado/2019.2/data/xsim/include -Isrc -shared -o pyxsi.so pybind.o xsi_loader.o -ldl
+   make: Entering directory '/root'
+   g++-10 -Wall -Werror -g -fPIC -std=c++20 -I/usr/include/python3.9 -I/opt/xilinx/Vivado/2021.2/data/xsim/include -Isrc -c -o pybind.o src/pybind.cpp
+   g++-10 -Wall -Werror -g -fPIC -std=c++20 -I/usr/include/python3.9 -I/opt/xilinx/Vivado/2021.2/data/xsim/include -Isrc -c -o xsi_loader.o src/xsi_loader.cpp
+   g++-10 -Wall -Werror -g -fPIC -std=c++20 -I/usr/include/python3.9 -I/opt/xilinx/Vivado/2021.2/data/xsim/include -Isrc -shared -o pyxsi.so pybind.o xsi_loader.o -lfmt -ldl -static-libstdc++
+   make: Leaving directory '/root'
 
 Execute Tests
 -------------
@@ -107,20 +129,30 @@ Finally, tests are discovered and executed using Python's pytest_ environment.
 .. code-block:: bash
 
    pyxsi$ make test
+   Moving inside Docker...
+   make: Entering directory '/root'
+   LD_LIBRARY_PATH=/opt/xilinx/Vivado/2021.2/lib/lnx64.o \
+        python3.9 -m pytest py/test.py -v
    ============================= test session starts ==============================
-   platform linux -- Python 3.8.3rc1, pytest-4.6.9, py-1.8.1, pluggy-0.13.0
-   rootdir: /home/foo/bar/baz/pyxsi
-   plugins: xdist-1.32.0, forked-1.1.3
-   collected 2 items
-   [...]
-   =========================================== 2 passed in 7.16 seconds ===========================================
+   platform linux -- Python 3.9.5, pytest-6.2.5, py-1.11.0, pluggy-1.0.0 -- /usr/bin/python3.9
+   cachedir: .pytest_cache
+   metadata: {'Python': '3.9.5', 'Platform': 'Linux-5.14.0-4-amd64-x86_64-with-glibc2.31', 'Packages': {'pytest': '6.2.5', 'py': '1.11.0', 'pluggy': '1.0.0'}, 'Plugins': {'html': '3.1.1', 'pytest_check': '1.0.4', 'forked': '1.4.0', 'metadata': '1.11.0', 'xdist': '2.5.0'}}
+   rootdir: /root
+   plugins: html-3.1.1, pytest_check-1.0.4, forked-1.4.0, metadata-1.11.0, xdist-2.5.0
+   collecting ... collected 2 items
+
+   py/test.py::test_counting PASSED                                         [ 50%]
+   py/test.py::test_random PASSED                                           [100%]
+    
+   ============================== 2 passed in 12.81s ==============================
+   make: Leaving directory '/root'
 
 Conclusions
 ~~~~~~~~~~~
 
 This is only a skeletal example, with just enough scaffolding to build on.
 
-.. _UG900: https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_2/ug900-vivado-logic-simulation.pdf
+.. _UG900: https://www.xilinx.com/support/documentation/sw_manuals/xilinx2021_2/ug900-vivado-logic-simulation.pdf
 .. _cocotb: https://github.com/cocotb/cocotb
 .. _VUnit: https://vunit.github.io/
 .. _UVVM: https://github.com/UVVM/UVVM
@@ -128,5 +160,3 @@ This is only a skeletal example, with just enough scaffolding to build on.
 
 .. [1] I use xsim because none of the open-source simulators can combine VHDL and Verilog, or simulate encrypted IP.
        Commercial simulators don't make sense for a small instrumentation consultancy (mine, anyway).
-       
-
