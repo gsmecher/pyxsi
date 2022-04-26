@@ -8,9 +8,7 @@ HALF_PERIOD = 5000
 
 
 def test_doom():
-    xsi = pyxsi.XSI("xsim.dir/assert_test/xsimk.so",
-            tracefile="doom.wdb",
-            logfile="doom.log")
+    xsi = pyxsi.XSI("xsim.dir/assert_test/xsimk.so", tracefile="doom.wdb")
 
     for n in range(10):
         xsi.set_port_value("clk", "1")
@@ -30,20 +28,18 @@ def test_doom():
 
 
 def test_counting():
-    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so",
-            tracefile="counting.wdb",
-            logfile="counting.log")
+    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so", tracefile="counting.wdb")
 
     (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
 
-    for n in range(65535):
+    for n in range(65535 + 2):
         xsi.set_port_value("clk", "1")
         xsi.run(HALF_PERIOD)
         xsi.set_port_value("clk", "0")
         xsi.run(HALF_PERIOD)
 
-        xsi.set_port_value("a", f"{n:016b}")
-        xsi.set_port_value("b", f"{n:016b}")
+        xsi.set_port_value("a", f"{n & 0xffff:016b}")
+        xsi.set_port_value("b", f"{n & 0xffff:016b}")
 
         a = xsi.get_port_value("a")
         b = xsi.get_port_value("b")
@@ -59,9 +55,7 @@ def test_counting():
 
 
 def test_random():
-    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so",
-            tracefile="random.wdb",
-            logfile="random.log")
+    xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so", tracefile="random.wdb")
 
     (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
 
