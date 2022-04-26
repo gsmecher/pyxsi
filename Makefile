@@ -1,26 +1,38 @@
+# See if we're inside docker. If not, wrap ourselves in docker and try again.
+ifeq ($(wildcard /.dockerenv),)
+include Makefile.docker-boilerplate
+else
+# For the remainder of this Makefile, we're running within Docker and can focus
+# on building documentation instead of the build environment.
+
 default: pyxsi.so
 
 .PHONY: rtl test clean
 
-XILINX_VIVADO := /opt/xilinx/Vivado/2019.2
+XILINX_VIVADO := /opt/xilinx/Vivado/2021.2
 
 VPATH=src
 
-CXXFLAGS=-fPIC -std=c++17 -I/usr/include/python3.8 -I$(XILINX_VIVADO)/data/xsim/include -Isrc
+CXX=g++-10
+CXXFLAGS=-Wall -Werror -g -fPIC -std=c++20 -I/usr/include/python3.9 -I$(XILINX_VIVADO)/data/xsim/include -Isrc
 
 %.o: %.cpp
-	g++ $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 pyxsi.so: pybind.o xsi_loader.o
-	g++ $(CXXFLAGS) -shared -o $@ $^ -ldl
+	$(CXX) $(CXXFLAGS) -shared -o $@ $^ -lfmt -ldl -static-libstdc++
 
 rtl:
-	xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget
-	xelab work.assert_test -prj rtl/assert_test.prj -debug all -dll -s assert_test
+	. $(XILINX_VIVADO)/settings64.sh && \
+		xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget && \
+		xelab work.assert_test -prj rtl/assert_test.prj -debug all -dll -s assert_test
 
 test: pyxsi.so
-	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o python3.8 -m pytest py/test.py -v
+	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o \
+		python3.9 -m pytest py/test.py -v -s
 
 clean:
 	-rm *.o *.so
 	-rm -rf xsim.dir py/__pycache__ *.jou *.log xelab.pb *.wdb
+
+endif

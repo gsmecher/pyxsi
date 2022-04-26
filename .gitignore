@@ -1,3 +1,4 @@
+.dockerenv-*
 *.swp
 *.jou
 *.log

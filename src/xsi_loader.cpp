@@ -10,7 +10,8 @@ namespace {
 
 
 
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wchar-subscripts"
 std::string Loader::convert_std_logic_to_str(const char* value_buffer, int width) {
     std::string res;
     for (int i = 0; i < width; i++) {
@@ -22,6 +23,7 @@ std::string Loader::convert_std_logic_to_str(const char* value_buffer, int width
     }
     return res;
 }
+#pragma GCC diagnostic pop
 
 Loader::Loader(const std::string& design_libname, const std::string& simkernel_libname) :
     _design_libname(design_libname),
@@ -117,8 +119,7 @@ Loader::restart()
 int
 Loader::get_value(int port_number, void* value)
 {
-    _xsi_get_value(_design_handle, port_number, value);
-    return get_status();
+    return _xsi_get_value(_design_handle, port_number, value);
 }
 
 int
@@ -169,6 +170,8 @@ Loader::get_str_property_port(int port_number, int property_type)
     return _xsi_get_str_property_port(_design_handle, port_number, property_type);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 void
 Loader::display_value(int port_number)
 {
@@ -187,6 +190,7 @@ Loader::display_value(int port_number)
     }
     return;
 }
+#pragma GCC diagnostic pop
 
 void
 Loader::display_port_values()

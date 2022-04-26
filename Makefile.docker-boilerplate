@@ -1,0 +1,24 @@
+.PHONY: $(MAKECMDGOALS)
+
+# Learn where the git repository lives, and what subdirectory we're working in.
+REPO_ROOT := $(shell git rev-parse --show-toplevel)
+REPO_SUBDIR := $(shell git rev-parse --show-prefix)
+
+DOCKERSTAMP := $(REPO_ROOT)/.dockerenv-$(shell hostname)
+DOCKERNAME := pyxsi-docker
+
+# Use Docker to build the document per the rest of this Makefile.
+$(MAKECMDGOALS) default: $(DOCKERSTAMP)
+	@echo Moving inside Docker...
+	@docker run								\
+		-u $(shell id -u):$(shell id -g)				\
+		-v $(REPO_ROOT):/root						\
+		-v /opt/xilinx:/opt/xilinx					\
+		$(DOCKERNAME)							\
+		make -C /root/$(REPO_SUBDIR) $(MAKECMDGOALS)
+
+# We need to re-build the Docker image anytime Dockerfile changes, or if we
+# haven't done this before.
+$(DOCKERSTAMP): $(REPO_ROOT)/Dockerfile
+	docker build -t $(DOCKERNAME) $(REPO_ROOT)
+	touch $(DOCKERSTAMP)
