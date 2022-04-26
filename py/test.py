@@ -7,26 +7,6 @@ import random
 HALF_PERIOD = 5000
 
 
-def test_doom():
-    xsi = pyxsi.XSI("xsim.dir/assert_test/xsimk.so", tracefile="doom.wdb")
-
-    for n in range(10):
-        xsi.set_port_value("clk", "1")
-        xsi.run(HALF_PERIOD)
-        xsi.set_port_value("clk", "0")
-        xsi.run(HALF_PERIOD)
-
-    xsi.set_port_value("doom", "1")
-
-    for n in range(10):
-        xsi.set_port_value("clk", "1")
-        xsi.run(HALF_PERIOD)
-        xsi.set_port_value("clk", "0")
-        xsi.run(HALF_PERIOD)
-
-    assert False, "Simulator should not have asserted silently!"
-
-
 def test_counting():
     xsi = pyxsi.XSI("xsim.dir/widget/xsimk.so", tracefile="counting.wdb")
 
