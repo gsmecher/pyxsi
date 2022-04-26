@@ -74,9 +74,7 @@ class XSI {
 			}
 		}
 
-		virtual ~XSI() {
-			loader->close();
-		}
+		virtual ~XSI() = default;
 
 		void run(int const& duration) {
 			loader->run(duration);
