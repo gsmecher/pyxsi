@@ -13,7 +13,10 @@ $(MAKECMDGOALS) default: $(DOCKERSTAMP)
 	@docker run								\
 		-u $(shell id -u):$(shell id -g)				\
 		-v $(REPO_ROOT):/root						\
-		-v $(XILINX_BASE):$(XILINX_BASE)				\
+		-v $(XILINX_VIVADO):$(XILINX_VIVADO)				\
+		-v $(XILINX_HLS):$(XILINX_HLS)					\
+		-v $(XILINX_VITIS):$(XILINX_VITIS)				\
+		-e XILINX_VIVADO -e XILINX_HLS -e XILINX_VITIS			\
 		$(DOCKERNAME)							\
 		make -C /root/$(REPO_SUBDIR) $(MAKECMDGOALS)
 
