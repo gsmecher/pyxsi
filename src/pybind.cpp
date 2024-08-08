@@ -84,6 +84,14 @@ class XSI {
 			loader->run(duration);
 		}
 
+		const int get_port_count() const {
+			return loader->num_ports();
+		}
+
+		const std::string get_port_name(int index) const {
+			return loader->get_str_property_port(index, xsiNameTopPort);
+		}
+
 		const std::string get_port_value(std::string const& port_name) const {
 			auto const& [port, length, direction] = port_map.at(port_name);
 
@@ -155,6 +163,8 @@ PYBIND11_MODULE(pyxsi, m) {
 
 		.def("get_port_value", &XSI::get_port_value)
 		.def("set_port_value", &XSI::set_port_value)
+		.def("get_port_count", &XSI::get_port_count)
+		.def("get_port_name", &XSI::get_port_name)
 		.def("run", &XSI::run, py::arg("duration")=0);
 }
 
