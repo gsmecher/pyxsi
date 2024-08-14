@@ -24,7 +24,8 @@ pyxsi.so: pybind.o xsi_loader.o
 
 rtl:
 	. $(XILINX_VIVADO)/settings64.sh && \
-		xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget
+		xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget && \
+		xelab work.counter_verilog -prj rtl/counter.prj -debug all -dll -s counter_verilog
 
 test: pyxsi.so
 	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o \
