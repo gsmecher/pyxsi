@@ -15,14 +15,12 @@ RUN apt-get update -qq								\
 			make build-essential g++-10				\
 			python3 python3-dev python3-pip python3-wheel		\
 			python3-numpy python3-scipy python3-matplotlib		\
-			python3-pytest python3-pytest-xdist			\
+			python3-pytest python3-pytest-forked python3-py		\
 			libfmt-dev pybind11-dev libboost-dev			\
 			libjansson-dev libgetdata-dev				\
 			libtinfo5 locales					\
 			valgrind						\
 		&& rm -rf /var/lib/apt/lists/* /var/cache/apt/*
-
-RUN python3.10 -m pip install pytest-check pytest-html
 
 # make /bin/sh symlink to bash instead of dash:
 RUN echo "dash dash/sh boolean false" | debconf-set-selections

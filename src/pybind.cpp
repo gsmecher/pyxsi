@@ -85,10 +85,6 @@ class XSI {
 
 		virtual ~XSI() = default;
 
-		void close() {
-			loader->close();
-		}
-
 		void restart() {
 			loader->restart();
 		}
@@ -119,19 +115,28 @@ class XSI {
 
 		const std::string get_port_value(std::string const& port_name) {
 			auto const& [port, length, direction] = port_map.at(port_name);
+			std::string s(length, '0');
 
 			switch(language) {
 				case Language::VERILOG: {
-					auto logicval = std::vector<s_xsi_vlog_logicval>(roundup_int_div(length, 32));
+					auto logicval = std::vector<s_xsi_vlog_logicval>((length+31)/32, {0, 0});
 					loader->get_value(port, logicval.data());
-					std::string ret = logic_val_to_string(logicval.data(), length);
-					return ret;
+
+					for(size_t n=0; n<length; n++) {
+						int aVal = (logicval[n/32].aVal >> (n&31)) & 1u;
+						int bVal = (logicval[n/32].bVal >> (n&31)) & 1u;
+
+						switch((bVal << 1) | aVal) {
+							case 0b00: s[length-1-n] = '0'; break;
+							case 0b01: s[length-1-n] = '1'; break;
+							case 0b10: s[length-1-n] = 'Z'; break;
+							case 0b11: s[length-1-n] = 'X'; break;
+						}
+					}
+					return s;
 				}
 
 				case Language::VHDL: {
-					/* Create a vector of chars and receive the value into it
-					* (get_value does not allocate space) */
-					std::string s(length, '0');
 					loader->get_value(port, s.data());
 					/* Transform into a string we can sanely deal with */
 					std::transform(std::begin(s), std::end(s), std::begin(s), [](auto const& ch) {
@@ -163,8 +168,25 @@ class XSI {
 
 			switch(language) {
 				case Language::VERILOG: {
-					auto logicval = std::vector<s_xsi_vlog_logicval>(roundup_int_div(length, 32));
-					string_to_logic_val(value, logicval.data());
+					/* Verilog simulator uses a pair of bit fields to encode 4-state variables */
+					auto logicval = std::vector<s_xsi_vlog_logicval>((length+31)/32, {0, 0});
+					for(size_t n=0; n<length; n++) {
+						switch(value[length-1-n]) {
+							/* Per UG900 Table 64 */
+							case '0':
+								break; /* nop, already 0 */
+							case '1':
+								logicval[n/32].aVal |= 1u<<(n&31u);
+								break;
+							case 'Z':
+								logicval[n/32].bVal |= 1u<<(n&31u);
+								break;
+							case 'X':
+								logicval[n/32].aVal |= 1u<<(n&31u);
+								logicval[n/32].bVal |= 1u<<(n&31u);
+								break;
+						}
+					}
 					loader->put_value(port, logicval.data());
 					break;
 				}
@@ -203,76 +225,6 @@ class XSI {
 
 		/* (id, length, direction) tuple */
 		std::unordered_map<std::string, std::tuple<int, size_t, PortDirection>> port_map;
-
-		const size_t roundup_int_div(const size_t dividend, const size_t divisor) {
-			return (dividend + divisor - 1) / divisor;
-		}
-
-		void clear_bit(XSI_UINT32 &container, size_t ind) {
-			container = container & ~((XSI_UINT32)1 << ind);
-		}
-
-		void set_bit(XSI_UINT32 &container, size_t ind) {
-			container = container | ((XSI_UINT32)1 << ind);
-		}
-
-		bool test_bit(XSI_UINT32 &container, size_t ind) {
-			return ((container & ((XSI_UINT32)1 << ind)) > 0 ? true : false);
-		}
-
-		void set_logic_val_at_ind(s_xsi_vlog_logicval &logicval, size_t ind, char val) {
-			switch(val) {
-				case '0':
-					clear_bit((logicval.aVal), ind);
-					clear_bit((logicval.bVal), ind);
-					break;
-				case '1':
-					set_bit((logicval.aVal), ind);
-					clear_bit((logicval.bVal), ind);
-					break;
-				case 'X':
-					set_bit((logicval.aVal), ind);
-					set_bit((logicval.bVal), ind);
-					break;
-				case 'Z':
-					clear_bit((logicval.aVal), ind);
-					set_bit((logicval.bVal), ind);
-					break;
-				default:
-					throw std::runtime_error("Unrecognized value for set_logic_val_at_ind: "+val);
-			}
-		}
-
-		void string_to_logic_val(std::string str, p_xsi_vlog_logicval value) {
-			size_t str_len = str.length();
-			size_t num_words = roundup_int_div(str_len, 32);
-			memset(value, 0, sizeof(s_xsi_vlog_logicval)*num_words);
-			for(size_t i = 0; i < str_len; i++) {
-				size_t array_ind = i / 32;
-				size_t bit_ind = i % 32;
-				set_logic_val_at_ind(value[array_ind], bit_ind, str[str_len-i-1]);
-			}
-		}
-
-		std::string logic_val_to_string(p_xsi_vlog_logicval value, const size_t n_bits) {
-			std::string ret(n_bits, '?');
-			for(size_t i = 0; i < n_bits; i++) {
-				size_t array_ind = i / 32;
-				size_t bit_ind = i % 32;
-				bool is_set_aVal = test_bit(value[array_ind].aVal, bit_ind);
-				bool is_set_bVal = test_bit(value[array_ind].bVal, bit_ind);
-				if(!is_set_aVal && !is_set_bVal) {
-					ret[n_bits-i-1] = '0';
-				} else if(is_set_aVal && !is_set_bVal) {
-					ret[n_bits-i-1] = '1';
-				} else if(!is_set_aVal && is_set_bVal) {
-					ret[n_bits-i-1] = 'X';
-				} else {
-					ret[n_bits-i-1] = 'Z';
-				}
-			}
-			return ret;
-		}
 };
 
 PYBIND11_MODULE(pyxsi, m) {
@@ -293,7 +245,6 @@ PYBIND11_MODULE(pyxsi, m) {
 		.def("set_port_value", &XSI::set_port_value)
 		.def("get_port_count", &XSI::get_port_count)
 		.def("get_port_name", &XSI::get_port_name)
-		.def("close", &XSI::close)
 		.def("restart", &XSI::restart)
 		.def("get_status", &XSI::get_status)
 		.def("get_error_info", &XSI::get_error_info)
