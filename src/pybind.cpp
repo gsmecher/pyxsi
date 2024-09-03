@@ -214,7 +214,7 @@ class XSI {
 							case SLV_L: return 'L';
 							case SLV_H: return 'H';
 							case SLV_DASH: return '-';
-							default: return 'X';
+							default: throw std::runtime_error("Unexpected logic value!");
 						}});
 					return s;
 				}
@@ -250,7 +250,7 @@ class XSI {
 						case 'L': return SLV_L;
 						case 'H': return SLV_H;
 						case '-': return SLV_DASH;
-						default: return SLV_X;
+						default: throw std::runtime_error("Unexpected logic value!");
 					}});
 					loader->put_value(port, value.data());
 					break;
