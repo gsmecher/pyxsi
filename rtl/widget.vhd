@@ -2,11 +2,13 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity widget is port (
+entity widget is
+generic (WIDTH : natural := 16);
+port (
     clk, rst : in std_logic := '0';
-    a, b     : in unsigned(15 downto 0):= 16ux"0";
-    sum      : out unsigned(15 downto 0) := 16ux"0";
-    product  : out unsigned(31 downto 0) := 32ux"0");
+    a, b     : in unsigned(WIDTH-1 downto 0):= (others => '0');
+    sum      : out unsigned(WIDTH-1 downto 0) := (others => '0');
+    product  : out unsigned(2*WIDTH-1 downto 0) := (others => '0'));
 end widget;
 
 architecture behav of widget is

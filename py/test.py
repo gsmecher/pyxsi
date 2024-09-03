@@ -1,4 +1,4 @@
-#!/usr/bin/python3.8
+#!/usr/bin/env -S python3 -m pytest --forked
 
 import pyxsi
 import random
@@ -8,11 +8,11 @@ import pytest
 HALF_PERIOD = 5000
 
 
-@pytest.mark.parametrize("language", ["VHDL", "VERILOG"])
+@pytest.mark.parametrize("language", ["VHDL", "Verilog"])
 def test_counting(language):
     if language == "VHDL":
         xsi = pyxsi.XSI(
-            "xsim.dir/widget/xsimk.so", language=pyxsi.VHDL, tracefile="counting.wdb"
+            "xsim.dir/widget/xsimk.so", language=pyxsi.VHDL, tracefile="widget.wdb"
         )
     else:
         xsi = pyxsi.XSI(
@@ -45,12 +45,18 @@ def test_counting(language):
         (old_a, old_b) = (a, b)
 
 
-def test_counting_wide_verilog():
-    xsi = pyxsi.XSI(
-        "xsim.dir/counter_wide_verilog/xsimk.so",
-        language=pyxsi.VERILOG,
-        tracefile="counter_wide_verilog.wdb",
-    )
+@pytest.mark.parametrize("language", ["VHDL", "Verilog"])
+def test_counting_wide(language):
+    if language == "VHDL":
+        xsi = pyxsi.XSI(
+            "xsim.dir/widget64/xsimk.so", language=pyxsi.VHDL, tracefile="widget64.wdb"
+        )
+    else:
+        xsi = pyxsi.XSI(
+            "xsim.dir/counter_wide_verilog/xsimk.so",
+            language=pyxsi.VERILOG,
+            tracefile="counter_wide_verilog.wdb",
+        )
 
     (old_a, old_b) = (f"{0:064b}", f"{0:064b}")
 
@@ -79,10 +85,18 @@ def test_counting_wide_verilog():
         (old_a, old_b) = (a, b)
 
 
-def test_random():
-    xsi = pyxsi.XSI(
-        "xsim.dir/widget/xsimk.so", language=pyxsi.VHDL, tracefile="random.wdb"
-    )
+@pytest.mark.parametrize("language", ["VHDL", "Verilog"])
+def test_random(language):
+    if language == "VHDL":
+        xsi = pyxsi.XSI(
+            "xsim.dir/widget/xsimk.so", language=pyxsi.VHDL, tracefile="random_vhdl.wdb"
+        )
+    else:
+        xsi = pyxsi.XSI(
+            "xsim.dir/counter_verilog/xsimk.so",
+            language=pyxsi.VERILOG,
+            tracefile="random_verilog.wdb",
+        )
 
     (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
 
