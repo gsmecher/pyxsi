@@ -6,6 +6,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 #include "xsi_loader.h"

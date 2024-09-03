@@ -20,7 +20,7 @@ CXXFLAGS=-Wall -Werror -g -fPIC -std=c++20 -I/usr/include/python3.10 -I$(XILINX_
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 pyxsi.so: pybind.o xsi_loader.o
-	$(CXX) $(CXXFLAGS) -shared -o $@ $^ -lfmt -ldl
+	$(CXX) $(CXXFLAGS) -shared -o $@ $^ -ldl
 
 rtl:
 	. $(XILINX_VIVADO)/settings64.sh && \
