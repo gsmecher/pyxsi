@@ -191,10 +191,9 @@ class XSI {
 
 			switch(language) {
 				case Language::VERILOG: {
-					s_xsi_vlog_logicval *logicval = new s_xsi_vlog_logicval[roundup_int_div(length, 32)];
-					loader->get_value(port, logicval);
-					std::string ret = logic_val_to_string(logicval, length);
-					delete [] logicval;
+					auto logicval = std::vector<s_xsi_vlog_logicval>(roundup_int_div(length, 32));
+					loader->get_value(port, logicval.data());
+					std::string ret = logic_val_to_string(logicval.data(), length);
 					return ret;
 				}
 
@@ -233,10 +232,9 @@ class XSI {
 
 			switch(language) {
 				case Language::VERILOG: {
-					s_xsi_vlog_logicval *logicval = new s_xsi_vlog_logicval[roundup_int_div(length, 32)];
-					string_to_logic_val(value, logicval);
-					loader->put_value(port, logicval);
-					delete [] logicval;
+					auto logicval = std::vector<s_xsi_vlog_logicval>(roundup_int_div(length, 32));
+					string_to_logic_val(value, logicval.data());
+					loader->put_value(port, logicval.data());
 					break;
 				}
 
