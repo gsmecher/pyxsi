@@ -18,7 +18,7 @@ always @ (posedge clk)
      if (rst) begin
        reg_sum <= 16'h0;
        reg_product <= 32'h0;
-     end 
+     end
      else begin
        reg_sum <= a+b;
        reg_product <= a*b;
@@ -44,7 +44,7 @@ always @ (posedge clk)
      if (rst) begin
        reg_sum <= 64'h0;
        reg_product <= 128'h0;
-     end 
+     end
      else begin
        reg_sum <= a+b;
        reg_product <= a*b;

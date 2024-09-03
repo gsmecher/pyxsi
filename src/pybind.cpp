@@ -24,17 +24,18 @@ const char SLV_H=7;
 const char SLV_DASH=8;
 
 enum class PortDirection {INPUT, OUTPUT, INOUT};
+enum class Language {VHDL, VERILOG};
 
 size_t roundup_int_div(size_t dividend, size_t divisor) {
 	return (dividend + divisor - 1) / divisor;
 }
 
 void clear_bit(XSI_UINT32 &container, size_t ind) {
-	container = container & ~((XSI_UINT32)1 << ind);	
+	container = container & ~((XSI_UINT32)1 << ind);
 }
 
 void set_bit(XSI_UINT32 &container, size_t ind) {
-	container = container | ((XSI_UINT32)1 << ind);	
+	container = container | ((XSI_UINT32)1 << ind);
 }
 
 bool test_bit(XSI_UINT32 &container, size_t ind) {
@@ -92,7 +93,6 @@ std::string logic_val_to_string(s_xsi_vlog_logicval* value, size_t n_bits) {
 			ret[n_bits-i-1] = 'Z';
 		}
 	}
-	//std::cout << "logic_val_to_string logicval.a=" << std::hex << value[0].aVal << " logicval.b=" << value[0].bVal << " retstr " << ret << std::dec << std::endl;
 	return ret;
 }
 
@@ -101,13 +101,13 @@ class XSI {
 		XSI(
 				const std::string &design_so,
 				const std::string &simengine_so="librdi_simulator_kernel.so",
-				const int is_toplevel_verilog=0,
+				const Language language=Language::VHDL,
 				const std::optional<std::string> &tracefile=std::nullopt,
 				const std::optional<std::string> &logfile=std::nullopt)
 			:
 				design_so(design_so),
 				simengine_so(simengine_so),
-				is_toplevel_verilog(is_toplevel_verilog),
+				language(language),
 				tracefile(tracefile),
 				logfile(logfile)
 		{
@@ -168,7 +168,7 @@ class XSI {
 
 		const std::string get_error_info() {
 			return loader->get_error_info();
-		} 
+		}
 
 		void run(int const& duration) {
 			loader->run(duration);
@@ -182,38 +182,46 @@ class XSI {
 			return loader->get_str_property_port(index, xsiNameTopPort);
 		}
 
-		const int get_is_toplevel_verilog() const {
-			return is_toplevel_verilog;
+		const Language get_language() const {
+			return language;
 		}
 
 		const std::string get_port_value(std::string const& port_name) const {
 			auto const& [port, length, direction] = port_map.at(port_name);
-			if(is_toplevel_verilog) {
-				s_xsi_vlog_logicval *logicval = new s_xsi_vlog_logicval[roundup_int_div(length, 32)];
-				loader->get_value(port, logicval);
-				std::string ret = logic_val_to_string(logicval, length);
-				delete [] logicval;
-				return ret;
-			} else {
-				/* Create a vector of chars and receive the value into it
-				* (get_value does not allocate space) */
-				std::string s(length, '0');
-				loader->get_value(port, s.data());
-				/* Transform into a string we can sanely deal with */
-				std::transform(std::begin(s), std::end(s), std::begin(s), [](auto const& ch) {
-					switch(ch) {
-						case SLV_0: return '0';
-						case SLV_1: return '1';
-						case SLV_U: return 'U';
-						case SLV_X: return 'X';
-						case SLV_Z: return 'Z';
-						case SLV_W: return 'W';
-						case SLV_L: return 'L';
-						case SLV_H: return 'H';
-						case SLV_DASH: return '-';
-						default: return 'X';
-					}});
-				return s;
+
+			switch(language) {
+				case Language::VERILOG: {
+					s_xsi_vlog_logicval *logicval = new s_xsi_vlog_logicval[roundup_int_div(length, 32)];
+					loader->get_value(port, logicval);
+					std::string ret = logic_val_to_string(logicval, length);
+					delete [] logicval;
+					return ret;
+				}
+
+				case Language::VHDL: {
+					/* Create a vector of chars and receive the value into it
+					* (get_value does not allocate space) */
+					std::string s(length, '0');
+					loader->get_value(port, s.data());
+					/* Transform into a string we can sanely deal with */
+					std::transform(std::begin(s), std::end(s), std::begin(s), [](auto const& ch) {
+						switch(ch) {
+							case SLV_0: return '0';
+							case SLV_1: return '1';
+							case SLV_U: return 'U';
+							case SLV_X: return 'X';
+							case SLV_Z: return 'Z';
+							case SLV_W: return 'W';
+							case SLV_L: return 'L';
+							case SLV_H: return 'H';
+							case SLV_DASH: return '-';
+							default: return 'X';
+						}});
+					return s;
+				}
+
+				default:
+					throw std::runtime_error("Unknown top-level language!");
 			}
 		}
 
@@ -223,26 +231,34 @@ class XSI {
 			if(length != value.length())
 				throw std::invalid_argument("Length of vector didn't match length of port!");
 
-			if(is_toplevel_verilog) {
-				s_xsi_vlog_logicval *logicval = new s_xsi_vlog_logicval[roundup_int_div(length, 32)];
-				string_to_logic_val(value, logicval);
-				loader->put_value(port, logicval);
-				delete [] logicval;
-			} else {
-				std::transform(std::begin(value), std::end(value), std::begin(value), [](auto const& ch) {
-				switch(ch) {
-					case '0': return SLV_0;
-					case '1': return SLV_1;
-					case 'U': return SLV_U;
-					case 'X': return SLV_X;
-					case 'Z': return SLV_Z;
-					case 'W': return SLV_W;
-					case 'L': return SLV_L;
-					case 'H': return SLV_H;
-					case '-': return SLV_DASH;
-					default: return SLV_X;
-				}});
-				loader->put_value(port, value.data());
+			switch(language) {
+				case Language::VERILOG: {
+					s_xsi_vlog_logicval *logicval = new s_xsi_vlog_logicval[roundup_int_div(length, 32)];
+					string_to_logic_val(value, logicval);
+					loader->put_value(port, logicval);
+					delete [] logicval;
+					break;
+				}
+
+				case Language::VHDL: {
+					std::transform(std::begin(value), std::end(value), std::begin(value), [](auto const& ch) {
+					switch(ch) {
+						case '0': return SLV_0;
+						case '1': return SLV_1;
+						case 'U': return SLV_U;
+						case 'X': return SLV_X;
+						case 'Z': return SLV_Z;
+						case 'W': return SLV_W;
+						case 'L': return SLV_L;
+						case 'H': return SLV_H;
+						case '-': return SLV_DASH;
+						default: return SLV_X;
+					}});
+					loader->put_value(port, value.data());
+					break;
+				}
+				default:
+					throw std::runtime_error("Unknown top-level language!");
 			}
 		}
 
@@ -252,7 +268,7 @@ class XSI {
 
 		const std::string design_so;
 		const std::string simengine_so;
-		const int is_toplevel_verilog;
+		const Language language;
 		const std::optional<std::string> tracefile;
 		const std::optional<std::string> logfile;
 
@@ -261,11 +277,16 @@ class XSI {
 };
 
 PYBIND11_MODULE(pyxsi, m) {
+	py::enum_<Language>(m, "Language")
+		.value("VHDL", Language::VHDL)
+		.value("VERILOG", Language::VERILOG)
+		.export_values();
+
 	py::class_<XSI>(m, "XSI")
-		.def(py::init<std::string const&, std::string const&, int, std::optional<std::string> const&, std::optional<std::string> const&>(),
+		.def(py::init<std::string const&, std::string const&, Language const&, std::optional<std::string> const&, std::optional<std::string> const&>(),
 				py::arg("design_so"),
 				py::arg("simengine_so")="librdi_simulator_kernel.so",
-				py::arg("is_toplevel_verilog")=0,
+				py::arg("language")=Language::VHDL,
 				py::arg("tracefile")=std::nullopt,
 				py::arg("logfile")=std::nullopt)
 
@@ -277,7 +298,7 @@ PYBIND11_MODULE(pyxsi, m) {
 		.def("restart", &XSI::restart)
 		.def("get_status", &XSI::get_status)
 		.def("get_error_info", &XSI::get_error_info)
-		.def("get_is_toplevel_verilog", &XSI::get_is_toplevel_verilog)
+		.def("get_language", &XSI::get_language)
 		.def("run", &XSI::run, py::arg("duration")=0);
 }
 
