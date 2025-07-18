@@ -31,7 +31,7 @@ class XSI {
 	public:
 		XSI(
 				const std::string &design_so,
-				const std::string &simengine_so="librdi_simulator_kernel.so",
+				const std::string &simengine_so="libxv_simulator_kernel.so",
 				const Language language=Language::VHDL,
 				const std::optional<std::string> &tracefile=std::nullopt,
 				const std::optional<std::string> &logfile=std::nullopt)
@@ -236,7 +236,7 @@ PYBIND11_MODULE(pyxsi, m) {
 	py::class_<XSI>(m, "XSI")
 		.def(py::init<std::string const&, std::string const&, Language const&, std::optional<std::string> const&, std::optional<std::string> const&>(),
 				py::arg("design_so"),
-				py::arg("simengine_so")="librdi_simulator_kernel.so",
+				py::arg("simengine_so")=SIMENGINE_SO, /* see Makefile */
 				py::arg("language")=Language::VHDL,
 				py::arg("tracefile")=std::nullopt,
 				py::arg("logfile")=std::nullopt)

@@ -7,15 +7,21 @@ REPO_SUBDIR := $(shell git rev-parse --show-prefix)
 DOCKERSTAMP := $(REPO_ROOT)/.dockerenv-$(shell hostname)
 DOCKERNAME := pyxsi-docker
 
+# Unfortunately there are two conventions for Vivado's install path:
+#
+# 2025.1 and newer: /opt/xilinx/2025.1/Vivado
+# older           : /opt/xilinx/Vivado/2023.2
+#
+# To be compatible with both, we share the commmon root
+XILINX_ROOT=$(realpath $(XILINX_VIVADO)/../..)
+
 # Use Docker to build the document per the rest of this Makefile.
 $(MAKECMDGOALS) default: $(DOCKERSTAMP)
 	@echo Moving inside Docker...
 	@docker run								\
 		-u $(shell id -u):$(shell id -g)				\
 		-v $(REPO_ROOT):/root						\
-		-v $(XILINX_VIVADO):$(XILINX_VIVADO)				\
-		-v $(XILINX_HLS):$(XILINX_HLS)					\
-		-v $(XILINX_VITIS):$(XILINX_VITIS)				\
+		-v $(XILINX_ROOT):/$(XILINX_ROOT)				\
 		-e XILINX_VIVADO -e XILINX_HLS -e XILINX_VITIS			\
 		$(DOCKERNAME)							\
 		make -C /root/$(REPO_SUBDIR) $(MAKECMDGOALS)

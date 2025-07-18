@@ -1,4 +1,6 @@
-XILINX_VIVADO ?= /opt/xilinx/Vivado/2023.2
+ifeq ($(XILINX_VIVADO),)
+ $(error Please source a Vivado settings.sh script before running this!)
+endif
 
 # See if we're inside docker. If not, wrap ourselves in docker and try again.
 ifeq ($(wildcard /.dockerenv),)
@@ -13,8 +15,15 @@ default: pyxsi.so
 
 VPATH=src
 
-CXX=g++-10
-CXXFLAGS=-Wall -Werror -g -fPIC -std=c++20 -I/usr/include/python3.10 -I$(XILINX_VIVADO)/data/xsim/include -Isrc
+# Vivado 2025.1+ changed the name of the shared library - it's either
+# librdi_simulator_kernel.so or libxv_simulator_kernel.so
+SIMENGINE_SO := $(wildcard $(XILINX_VIVADO)/lib/lnx64.o/lib*_simulator_kernel.so)
+
+CXX=g++
+CXXFLAGS=-Wall -Werror -g -fPIC -std=c++20		\
+	 $(shell python3 -m pybind11 --includes)	\
+	-I$(XILINX_VIVADO)/data/xsim/include -Isrc	\
+	-DSIMENGINE_SO=\"$(SIMENGINE_SO)\"
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
