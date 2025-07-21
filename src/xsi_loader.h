@@ -1,99 +1,120 @@
-#ifndef _XSI_LOADER_H_
-#define _XSI_LOADER_H_
+#pragma once
 
 #include "xsi.h"
-#include "xsi_shared_lib.h"
+#include <dlfcn.h>
 
 #include <string>
 #include <vector>
-#include <exception>
+#include <stdexcept>
 
 namespace Xsi {
+	class Loader {
+		public:
+			Loader(const std::string& dll_name, const std::string& simkernel_libname);
+			~Loader() {
+				close();
+				dlclose(design);
+				dlclose(simkernel);
+			}
 
-class LoaderException : public std::exception {
-public:
-    LoaderException(const std::string& msg) : _msg("ISim engine error: " + msg) { }
+			// Initialize and close
+			bool isopen() const { return !!_design_handle; }
+			void open(p_xsi_setup_info setup_info){
+				_design_handle = _xsi_open(setup_info);
+				if(isopen()) {
+					// Set number of ports
+					XSI_INT32 num_ports = get_int(xsiNumTopPorts);
+					// Allocate buffer for printing
+					for(XSI_INT32 i=0; i<num_ports; ++i) {
+						XSI_INT32 port_value_size = get_int_port(i, xsiHDLValueSize);
+						_xsi_value_buffer.push_back(new char[port_value_size]);
+					}
+				} else
+					throw std::runtime_error("Failed to open design!");
+			}
 
-    virtual ~LoaderException() throw() { }
+			void close() {
+				int size = _xsi_value_buffer.size();
+				for(XSI_INT32 i=0; i<size; ++i)
+					delete[] _xsi_value_buffer[i];
 
-    virtual const char * what() const throw() { return _msg.c_str(); }
-private:
-    std::string _msg;
-};
+				if (_design_handle) {
+					_xsi_close(_design_handle);
+					_design_handle = NULL;
+				}
+			}
 
-class Loader {
+			// Control simulation
+			void run(XSI_INT64 step) {
+				if(!isopen())
+					throw std::runtime_error("Design not open! Can't execute XSI method.");
+				_xsi_run(_design_handle, step);
+			}
 
-public:
-    Loader(const std::string& dll_name, const std::string& simkernel_libname);
-    ~Loader();
+			void restart() {
+				if(!isopen())
+					throw std::runtime_error("Design not open! Can't execute XSI method.");
+				_xsi_restart(_design_handle);
+			}
 
-    // Initialize and close
-    bool isopen() const;
-    void open(p_xsi_setup_info setup_info);
-    void close();
+			// Put value
+			void put_value(int port_number, const void* value){
+				_xsi_put_value(_design_handle, port_number, const_cast<void*>(value));
+			}
 
-    // Control simulation
-    void run(XSI_INT64 step);
-    void restart();
+			// Read values
+			int get_value(int port_number, void* value) {
+				_xsi_get_value(_design_handle, port_number, value);
+				return get_status();
+			}
+			int get_port_number(const char* port_name){
+				return _xsi_get_port_number(_design_handle, port_name);
+			}
 
-    // Put value
-    void put_value(int port_number, const void* value);
+			int get_int(int property_type){
+				return _xsi_get_int(_design_handle, property_type);
+			}
 
-    // Read values
-    int get_value(int port_number, void* value);
-    int get_port_number(const char* port_name);
-    int get_int_property_design(int property_type);
-    int get_int_property_port(int port_number, int property_type);
-    const char* get_str_property_port(int port_number, int property_type);
-    int get_status();
-    const char* get_error_info();
-    void trace_all();
+			int get_int_port(int port_number, int property_type){
+				return _xsi_get_int_port(_design_handle, port_number, property_type);
+			}
 
+			const char* get_str_port(int port_number, int property_type){
+				return _xsi_get_str_port(_design_handle, port_number, property_type);
+			}
 
-public:
-    // Utility functions
-    int num_ports() { return _xsi_value_buffer.size(); };
-    void display_value(int port_number);
-    void display_port_values();
-    static std::string convert_std_logic_to_str(const char* value_buffer, int width);
-    
-private:
-    bool initialize();
+			int get_status() { return _xsi_get_status(_design_handle); }
 
-private:
-    // Handles for the shared library and design
-    Xsi::SharedLibrary _design_lib;
-    Xsi::SharedLibrary _simkernel_lib;
-    std::string _design_libname;
-    std::string _simkernel_libname;
-    xsiHandle _design_handle;
+			const char* get_error_info(){ return _xsi_get_error_info(_design_handle); }
+			void trace_all() { _xsi_trace_all(_design_handle); }
 
-private:
-    // Addresses of the XSI functions
-    t_fp_xsi_open _xsi_open;
-    t_fp_xsi_close _xsi_close;
-    t_fp_xsi_run _xsi_run;
-    t_fp_xsi_get_value _xsi_get_value;
-    t_fp_xsi_put_value _xsi_put_value;
-    t_fp_xsi_get_status _xsi_get_status;
-    t_fp_xsi_get_error_info _xsi_get_error_info;
-    t_fp_xsi_restart _xsi_restart;
-    t_fp_xsi_get_port_number _xsi_get_port_number;
-    t_fp_xsi_get_int _xsi_get_int_property_design;
-    t_fp_xsi_get_int_port _xsi_get_int_property_port;
-    t_fp_xsi_get_str_port _xsi_get_str_property_port;
-    t_fp_xsi_trace_all _xsi_trace_all;
+		public:
+			int num_ports() { return _xsi_value_buffer.size(); };
 
-private:
+		private:
+			void *design, *simkernel;
 
-    // Buffer for printing value for each of the ports
-    std::vector<char*> _xsi_value_buffer;
+			// Handles for the shared library and design
+			std::string _design_libname;
+			std::string _simkernel_libname;
+			xsiHandle _design_handle;
 
+			// Addresses of the XSI functions
+			t_fp_xsi_open _xsi_open;
+			t_fp_xsi_close _xsi_close;
+			t_fp_xsi_run _xsi_run;
+			t_fp_xsi_get_value _xsi_get_value;
+			t_fp_xsi_put_value _xsi_put_value;
+			t_fp_xsi_get_status _xsi_get_status;
+			t_fp_xsi_get_error_info _xsi_get_error_info;
+			t_fp_xsi_restart _xsi_restart;
+			t_fp_xsi_get_port_number _xsi_get_port_number;
+			t_fp_xsi_get_int _xsi_get_int;
+			t_fp_xsi_get_int_port _xsi_get_int_port;
+			t_fp_xsi_get_str_port _xsi_get_str_port;
+			t_fp_xsi_trace_all _xsi_trace_all;
 
-}; // class Loader
-
-} // namespace Xsi
-
-#endif // _XSI_LOADER_H_
-
-
+			// Buffer for printing value for each of the ports
+			std::vector<char*> _xsi_value_buffer;
+	};
+}

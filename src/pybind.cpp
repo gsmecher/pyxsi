@@ -61,11 +61,11 @@ class XSI {
 			/* Keep a local mapping from port name (which we care about)
 			 * to a tuple specifying (port index, length). */
 			for(int i=0; i<loader->num_ports(); i++) {
-				int length = loader->get_int_property_port(i, xsiHDLValueSize);
-				std::string port = loader->get_str_property_port(i, xsiNameTopPort);
+				int length = loader->get_int_port(i, xsiHDLValueSize);
+				std::string port = loader->get_str_port(i, xsiNameTopPort);
 				PortDirection d;
 
-				switch(loader->get_int_property_port(i, xsiDirectionTopPort)) {
+				switch(loader->get_int_port(i, xsiDirectionTopPort)) {
 					case xsiInputPort: d = PortDirection::INPUT; break;
 					case xsiOutputPort: d = PortDirection::OUTPUT; break;
 					case xsiInoutPort: d = PortDirection::INOUT; break;
@@ -106,7 +106,7 @@ class XSI {
 		}
 
 		const std::string get_port_name(int index) const {
-			return loader->get_str_property_port(index, xsiNameTopPort);
+			return loader->get_str_port(index, xsiNameTopPort);
 		}
 
 		const Language get_language() const {
