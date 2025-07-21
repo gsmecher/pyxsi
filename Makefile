@@ -25,7 +25,7 @@ CXXFLAGS=-Wall -Werror -g -fPIC -std=c++20		\
 	-I$(XILINX_VIVADO)/data/xsim/include -Isrc	\
 	-DSIMENGINE_SO=\"$(SIMENGINE_SO)\"
 
-%.o: %.cpp
+%.o: %.cpp xsi_loader.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 pyxsi.so: pybind.o xsi_loader.o
