@@ -5,7 +5,10 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <stdexcept>
+#include <cstdint>
+#include <cstring>
 
 namespace Xsi {
 	class Loader {
@@ -17,26 +20,21 @@ namespace Xsi {
 				dlclose(simkernel);
 			}
 
-			// Initialize and close
 			bool isopen() const { return !!_design_handle; }
 			void open(p_xsi_setup_info setup_info){
 				_design_handle = _xsi_open(setup_info);
 				if(isopen()) {
-					// Set number of ports
-					XSI_INT32 num_ports = get_int(xsiNumTopPorts);
-					// Allocate buffer for printing
-					for(XSI_INT32 i=0; i<num_ports; ++i) {
-						XSI_INT32 port_value_size = get_int_port(i, xsiHDLValueSize);
-						_xsi_value_buffer.push_back(new char[port_value_size]);
-					}
+					_num_ports = get_int(xsiNumTopPorts);
 				} else
 					throw std::runtime_error("Failed to open design!");
 			}
 
 			void close() {
-				int size = _xsi_value_buffer.size();
-				for(XSI_INT32 i=0; i<size; ++i)
-					delete[] _xsi_value_buffer[i];
+				if(_dbg && _dbgManagerDtor) {
+					_dbgManagerDtor(_dbg);
+					free(_dbg);
+					_dbg = nullptr;
+				}
 
 				if (_design_handle) {
 					_xsi_close(_design_handle);
@@ -44,7 +42,6 @@ namespace Xsi {
 				}
 			}
 
-			// Control simulation
 			void run(XSI_INT64 step) {
 				if(!isopen())
 					throw std::runtime_error("Design not open! Can't execute XSI method.");
@@ -57,16 +54,15 @@ namespace Xsi {
 				_xsi_restart(_design_handle);
 			}
 
-			// Put value
 			void put_value(int port_number, const void* value){
 				_xsi_put_value(_design_handle, port_number, const_cast<void*>(value));
 			}
 
-			// Read values
 			int get_value(int port_number, void* value) {
 				_xsi_get_value(_design_handle, port_number, value);
 				return get_status();
 			}
+
 			int get_port_number(const char* port_name){
 				return _xsi_get_port_number(_design_handle, port_name);
 			}
@@ -88,18 +84,36 @@ namespace Xsi {
 			const char* get_error_info(){ return _xsi_get_error_info(_design_handle); }
 			void trace_all() { _xsi_trace_all(_design_handle); }
 
-		public:
-			int num_ports() { return _xsi_value_buffer.size(); };
+			int num_ports() const { return _num_ports; }
+
+			int get_port_direction(int port_number) {
+				return get_int_port(port_number, xsiDirectionTopPort);
+			}
+
+			int get_port_length(int port_number) {
+				return get_int_port(port_number, xsiHDLValueSize);
+			}
+
+			const char* get_port_name(int port_number) {
+				return get_str_port(port_number, xsiNameTopPort);
+			}
+
+			// Hierarchy — call init_hierarchy() after open(), before using signals
+			void init_hierarchy();
+			std::string get_signal_value(const std::string &name);
+			void set_signal_value(const std::string &name, const std::string &value);
+			void set_signal_value(const std::string &name, uint64_t value);
+			std::vector<std::string> list_signals();
 
 		private:
 			void *design, *simkernel;
 
-			// Handles for the shared library and design
 			std::string _design_libname;
 			std::string _simkernel_libname;
 			xsiHandle _design_handle;
+			int _num_ports = 0;
 
-			// Addresses of the XSI functions
+			// XSI function pointers (resolved from design/simkernel .so)
 			t_fp_xsi_open _xsi_open;
 			t_fp_xsi_close _xsi_close;
 			t_fp_xsi_run _xsi_run;
@@ -114,7 +128,44 @@ namespace Xsi {
 			t_fp_xsi_get_str_port _xsi_get_str_port;
 			t_fp_xsi_trace_all _xsi_trace_all;
 
-			// Buffer for printing value for each of the ports
-			std::vector<char*> _xsi_value_buffer;
+			// Hierarchy function pointers (resolved from simkernel .so; may be null)
+			using fn_isPortVHDL = bool(*)(void*, int);
+			using fn_getObjectInfo = void*(*)(const void *dbg, unsigned id);
+			using fn_getObjectLongName = std::string*(*)(std::string *result, const void *dbg, unsigned id);
+			using fn_getCommonObjectInfo = void*(*)(const void *dbg, const void *objInfo);
+			using fn_setHdlValueObject = void(*)(const void *dbg, void *hdlObj, const void *objInfo);
+			using fn_hasDbgImage = bool(*)(const void *dbg);
+			using fn_readDbgFile = void(*)(void *dbg, const char *path);
+			using fn_dbgManagerCtor = void(*)(void *dbg, const std::string &path);
+			using fn_dbgManagerDtor = void(*)(void *dbg);
+			using fn_getScopeInfo = void*(*)(const void *dbg, unsigned id);
+			using fn_getScopeCommonInfo = void*(*)(const void *dbg, const void *scopeInfo);
+			using fn_getValue = void(*)(void *uas, const void *hdlObj,
+				unsigned char *buf, unsigned *outSize,
+				unsigned offset, unsigned count,
+				void *p1, void *p2, void *p3, void *p4, void *p5, bool *p6);
+
+			fn_isPortVHDL _isPortVHDL = nullptr;
+			fn_getObjectInfo _getObjectInfo = nullptr;
+			fn_getObjectLongName _getObjectLongName = nullptr;
+			fn_getCommonObjectInfo _getCommonObjectInfo = nullptr;
+			fn_setHdlValueObject _setHdlValueObject = nullptr;
+			fn_hasDbgImage _hasDbgImage = nullptr;
+			fn_readDbgFile _readDbgFile = nullptr;
+			fn_dbgManagerCtor _dbgManagerCtor = nullptr;
+			fn_dbgManagerDtor _dbgManagerDtor = nullptr;
+			fn_getScopeInfo _getScopeInfo = nullptr;
+			fn_getScopeCommonInfo _getScopeCommonInfo = nullptr;
+			fn_getValue _getValue = nullptr;
+
+			int resolve_port(const std::string &name);
+			void enumerate_scope(unsigned scope_id);
+			std::string _read_hier_signal(unsigned id);
+
+			void *_dbg = nullptr;
+			void *_uas = nullptr;
+
+			std::unordered_map<std::string, unsigned> _name_to_id;
+			std::unordered_map<std::string, std::string> _port_to_hier;
 	};
 }

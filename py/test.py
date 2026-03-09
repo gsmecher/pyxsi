@@ -12,30 +12,29 @@ HALF_PERIOD = 5000
 def test_counting(language):
     if language == "VHDL":
         xsi = pyxsi.XSI(
-            "xsim.dir/widget/xsimk.so", language=pyxsi.VHDL, tracefile="widget.wdb"
+            "xsim.dir/widget/xsimk.so", tracefile="widget.wdb"
         )
     else:
         xsi = pyxsi.XSI(
             "xsim.dir/counter_verilog/xsimk.so",
-            language=pyxsi.VERILOG,
             tracefile="counter_verilog.wdb",
         )
 
-    (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
+    (old_a, old_b) = ("0", "0")
 
     for n in range(65535 + 2):
-        xsi.set_port_value("clk", "1")
+        xsi.set_value("clk", 1)
         xsi.run(HALF_PERIOD)
-        xsi.set_port_value("clk", "0")
+        xsi.set_value("clk", 0)
         xsi.run(HALF_PERIOD)
 
-        xsi.set_port_value("a", f"{n & 0xffff:016b}")
-        xsi.set_port_value("b", f"{n & 0xffff:016b}")
+        xsi.set_value("a", n & 0xffff)
+        xsi.set_value("b", n & 0xffff)
 
-        a = xsi.get_port_value("a")
-        b = xsi.get_port_value("b")
-        sum = xsi.get_port_value("sum")
-        product = xsi.get_port_value("product")
+        a = xsi.get_value("a")
+        b = xsi.get_value("b")
+        sum = xsi.get_value("sum")
+        product = xsi.get_value("product")
 
         print(f"old_a {old_a} old_b {old_b} sum {sum} product {product}")
 
@@ -49,30 +48,29 @@ def test_counting(language):
 def test_counting_wide(language):
     if language == "VHDL":
         xsi = pyxsi.XSI(
-            "xsim.dir/widget64/xsimk.so", language=pyxsi.VHDL, tracefile="widget64.wdb"
+            "xsim.dir/widget64/xsimk.so", tracefile="widget64.wdb"
         )
     else:
         xsi = pyxsi.XSI(
             "xsim.dir/counter_wide_verilog/xsimk.so",
-            language=pyxsi.VERILOG,
             tracefile="counter_wide_verilog.wdb",
         )
 
-    (old_a, old_b) = (f"{0:064b}", f"{0:064b}")
+    (old_a, old_b) = ("0", "0")
 
     for n in range(2**32, (2**32) + 10):
-        xsi.set_port_value("clk", "1")
+        xsi.set_value("clk", 1)
         xsi.run(HALF_PERIOD)
-        xsi.set_port_value("clk", "0")
+        xsi.set_value("clk", 0)
         xsi.run(HALF_PERIOD)
 
-        xsi.set_port_value("a", f"{(n+1) & 0xffffffffffffff:064b}")
-        xsi.set_port_value("b", f"{(n+2) & 0xffffffffffffff:064b}")
+        xsi.set_value("a", f"{(n+1) & 0xffffffffffffff:064b}")
+        xsi.set_value("b", f"{(n+2) & 0xffffffffffffff:064b}")
 
-        a = xsi.get_port_value("a")
-        b = xsi.get_port_value("b")
-        sum = xsi.get_port_value("sum")
-        product = xsi.get_port_value("product")
+        a = xsi.get_value("a")
+        b = xsi.get_value("b")
+        sum = xsi.get_value("sum")
+        product = xsi.get_value("product")
 
         print(f"old_a {old_a} old_b {old_b} sum {sum} product {product}")
         print(
@@ -86,33 +84,75 @@ def test_counting_wide(language):
 
 
 @pytest.mark.parametrize("language", ["VHDL", "Verilog"])
+def test_hier_signal(language):
+    if language == "VHDL":
+        xsi = pyxsi.XSI(
+            "xsim.dir/widget/xsimk.so"
+        )
+        prefix = "widget"
+    else:
+        xsi = pyxsi.XSI(
+            "xsim.dir/counter_verilog/xsimk.so",
+        )
+        prefix = "counter_verilog"
+
+    sum_path = f"/{prefix}/sum"
+    product_path = f"/{prefix}/product"
+
+    # Verify hierarchy database is populated
+    signals = xsi.list_signals()
+    assert len(signals) > 0, "No signals found in hierarchy"
+
+    for n in range(10):
+        xsi.set_value("clk", 1)
+        xsi.run(HALF_PERIOD)
+        xsi.set_value("clk", 0)
+        xsi.run(HALF_PERIOD)
+
+        xsi.set_value("a", (n+1) & 0xffff)
+        xsi.set_value("b", (n+2) & 0xffff)
+
+    # After clocking, the internal regs should match the output ports
+    sum_port = xsi.get_value("sum")
+    product_port = xsi.get_value("product")
+
+    sum_hier = xsi.get_value(sum_path)
+    product_hier = xsi.get_value(product_path)
+
+    print(f"sum port={sum_port} hier={sum_hier}")
+    print(f"product port={product_port} hier={product_hier}")
+
+    assert sum_port == sum_hier, f"sum mismatch: port={sum_port} hier={sum_hier}"
+    assert product_port == product_hier, f"product mismatch: port={product_port} hier={product_hier}"
+
+
+@pytest.mark.parametrize("language", ["VHDL", "Verilog"])
 def test_random(language):
     if language == "VHDL":
         xsi = pyxsi.XSI(
-            "xsim.dir/widget/xsimk.so", language=pyxsi.VHDL, tracefile="random_vhdl.wdb"
+            "xsim.dir/widget/xsimk.so", tracefile="random_vhdl.wdb"
         )
     else:
         xsi = pyxsi.XSI(
             "xsim.dir/counter_verilog/xsimk.so",
-            language=pyxsi.VERILOG,
             tracefile="random_verilog.wdb",
         )
 
-    (old_a, old_b) = (f"{0:016b}", f"{0:016b}")
+    (old_a, old_b) = ("0", "0")
 
     for n in range(65535):
-        xsi.set_port_value("clk", "1")
+        xsi.set_value("clk", 1)
         xsi.run(HALF_PERIOD)
-        xsi.set_port_value("clk", "0")
+        xsi.set_value("clk", 0)
         xsi.run(HALF_PERIOD)
 
-        xsi.set_port_value("a", f"{random.randint(0, 65535):016b}")
-        xsi.set_port_value("b", f"{random.randint(0, 65535):016b}")
+        xsi.set_value("a", random.randint(0, 65535))
+        xsi.set_value("b", random.randint(0, 65535))
 
-        a = xsi.get_port_value("a")
-        b = xsi.get_port_value("b")
-        sum = xsi.get_port_value("sum")
-        product = xsi.get_port_value("product")
+        a = xsi.get_value("a")
+        b = xsi.get_value("b")
+        sum = xsi.get_value("sum")
+        product = xsi.get_value("product")
 
         print(f"old_a {old_a} old_b {old_b} sum {sum} product {product}")
 
