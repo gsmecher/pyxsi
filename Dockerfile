@@ -17,6 +17,7 @@ RUN apt-get update -qq								\
 			python3-pytest python3-pytest-forked			\
 			libfmt-dev pybind11-dev python3-pybind11		\
 			locales wget valgrind					\
+			libx11-6						\
 		&& rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Install libtinfo5, which recent Vivado still seems to rely on
