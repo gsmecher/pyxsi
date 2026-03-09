@@ -119,5 +119,6 @@ PYBIND11_MODULE(pyxsi, m) {
 		.def("get_status", &XSI::get_status)
 		.def("get_error_info", &XSI::get_error_info)
 		.def("list_signals", &XSI::list_signals)
-		.def("run", &XSI::run, py::arg("duration")=0);
+		.def("run", &XSI::run, py::arg("duration")=0,
+			py::call_guard<py::gil_scoped_release>());
 }
