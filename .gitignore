@@ -4,7 +4,8 @@
 *.log
 *.wdb
 *.o
+*.so
 __pycache__
-pyxsi.so
 xelab.pb
 xsim.dir
+core.*

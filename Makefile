@@ -9,40 +9,39 @@ else
 # For the remainder of this Makefile, we're running within Docker and can focus
 # on building documentation instead of the build environment.
 
-default: pyxsi.so
+default: _pyxsi.so
 
 .PHONY: rtl test clean
 
 VPATH=src
-
-# Vivado 2025.1+ changed the name of the shared library - it's either
-# librdi_simulator_kernel.so or libxv_simulator_kernel.so
-SIMENGINE_SO := $(wildcard $(XILINX_VIVADO)/lib/lnx64.o/lib*_simulator_kernel.so)
-
 CXX=g++
 CXXFLAGS=-Wall -Werror -g -fPIC -std=c++20		\
 	 $(shell python3 -m pybind11 --includes)	\
-	-I$(XILINX_VIVADO)/data/xsim/include -Isrc	\
-	-DSIMENGINE_SO=\"$(SIMENGINE_SO)\"
+	-I$(XILINX_VIVADO)/data/xsim/include -Isrc
+
+SHIMFLAGS=-Wall -Werror -g -fPIC -std=c++20
 
 %.o: %.cpp xsi_loader.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-pyxsi.so: pybind.o xsi_loader.o
-	$(CXX) $(CXXFLAGS) -shared -o $@ $^ -ldl
+xsi_shim.so: src/xsi_shim.cpp
+	$(CXX) $(SHIMFLAGS) -shared -o $@ $<
+
+_pyxsi.so: pybind.o xsi_loader.o xsi_shim.so
+	$(CXX) $(CXXFLAGS) -shared -o $@ pybind.o xsi_loader.o -ldl
 
 rtl:
 	. $(XILINX_VIVADO)/settings64.sh && \
-		xelab work.widget -prj rtl/widget.prj -debug all -dll -s widget && \
-		xelab work.widget -prj rtl/widget.prj -debug all -dll -generic_top WIDTH=64 -s widget64 && \
-		xelab work.counter_verilog -prj rtl/counter.prj -debug all -dll -s counter_verilog  && \
-		xelab work.counter_wide_verilog -prj rtl/counter.prj -debug all -dll -s counter_wide_verilog
+		xelab work.dut -prj rtl/dut.prj -debug all -dll -s dut && \
+		xelab work.dut -prj rtl/dut.prj -debug all -dll -generic_top WIDTH=64 -s dut_wide && \
+		xelab work.dut -prj rtl/dut_v.prj -debug all -dll -s dut_v && \
+		xelab work.dut -prj rtl/dut_v.prj -debug all -dll -generic_top WIDTH=64 -s dut_wide_v
 
-test: pyxsi.so
+test: _pyxsi.so
 	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o py/test.py -v -s
 
 clean:
 	-rm *.o *.so
-	-rm -rf xsim.dir py/__pycache__ *.jou *.log xelab.pb *.wdb
+	-rm -rf xsim.dir __pycache__ py/__pycache__ *.jou *.log xelab.pb *.wdb
 
 endif
