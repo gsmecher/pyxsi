@@ -7,7 +7,7 @@ XILINX_VIVADO = os.environ.get("XILINX_VIVADO", None)
 
 
 class XSI(_XSI):
-    def __init__(self, design_so, *, simengine_so=None, tracefile=None, logfile=None):
+    def __init__(self, design_so, *, simengine_so=None, wdb=None, logfile=None):
 
         if simengine_so is None:
             if not XILINX_VIVADO:
@@ -23,7 +23,7 @@ class XSI(_XSI):
         super().__init__(
             design_so,
             simengine_so,
-            tracefile=tracefile,
+            wdb=wdb,
             logfile=logfile,
             shim_so=shim_so,
         )

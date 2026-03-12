@@ -163,13 +163,13 @@ class _XSI {
 		_XSI(
 				const std::string &design_so,
 				const std::string &simengine_so="libxv_simulator_kernel.so",
-				const std::optional<std::string> &tracefile=std::nullopt,
+				const std::optional<std::string> &wdb=std::nullopt,
 				const std::optional<std::string> &logfile=std::nullopt,
 				const std::string &shim_so="xsi_shim.so")
 			:
 				design_so(design_so),
 				simengine_so(simengine_so),
-				tracefile(tracefile),
+				wdb(wdb),
 				logfile(logfile)
 		{
 			loader = std::make_unique<Xsi::Loader>(design_so, simengine_so, shim_so);
@@ -178,8 +178,8 @@ class _XSI {
 
 			memset(&info, 0, sizeof(info));
 
-			if(tracefile)
-				info.wdbFileName = (char *)this->tracefile->c_str();
+			if(wdb)
+				info.wdbFileName = (char *)this->wdb->c_str();
 			if(logfile)
 				info.logFileName = (char *)this->logfile->c_str();
 
@@ -187,7 +187,7 @@ class _XSI {
 
 			loader->init_hierarchy();
 
-			if(tracefile)
+			if(wdb)
 				loader->trace_all();
 
 			// Initialize all input ports to 0
@@ -317,7 +317,7 @@ class _XSI {
 
 		const std::string design_so;
 		const std::string simengine_so;
-		const std::optional<std::string> tracefile;
+		const std::optional<std::string> wdb;
 		const std::optional<std::string> logfile;
 };
 
@@ -330,7 +330,7 @@ PYBIND11_MODULE(_pyxsi, m) {
 		.def(py::init<std::string const&, std::string const&, std::optional<std::string> const&, std::optional<std::string> const&, std::string const&>(),
 				py::arg("design_so"),
 				py::arg("simengine_so"),
-				py::arg("tracefile")=std::nullopt,
+				py::arg("wdb")=std::nullopt,
 				py::arg("logfile")=std::nullopt,
 				py::arg("shim_so")="xsi_shim.so")
 

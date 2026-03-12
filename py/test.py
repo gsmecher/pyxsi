@@ -152,21 +152,22 @@ def test_watch_stop(xsi):
     assert "/dut/reg_u" in changes
 
 
-@pytest.mark.parametrize("so,tracefile", [
-    (VHDL["so"], "trace_vhdl.wdb"),
-    (VERILOG["so"], "trace_verilog.wdb"),
-], ids=["vhdl", "sv"])
-def test_tracefile(so, tracefile):
-    """tracefile= kwarg produces a .wdb file on disk."""
-    if os.path.exists(tracefile):
-        os.remove(tracefile)
+@pytest.mark.parametrize("so", [VHDL["so"], VERILOG["so"]], ids=["vhdl", "sv"])
+def test_wdb(so, request):
+    """wdb= kwarg produces a non-empty .wdb file on disk."""
+    wdbfile = request.node.name + ".wdb"
+    if os.path.exists(wdbfile):
+        os.remove(wdbfile)
 
-    sim = pyxsi.XSI(so, tracefile=tracefile)
-    sim.u_in = 1
+    sim = pyxsi.XSI(so, wdb=wdbfile)
+    sim.u_in = 0
+    clock(sim)
+    sim.u_in = 0xA5
     clock(sim)
     del sim
 
-    assert os.path.exists(tracefile), f"Tracefile {tracefile} was not created"
+    assert os.path.exists(wdbfile), f"WDB file {wdbfile} was not created"
+    assert os.path.getsize(wdbfile) > 0, f"WDB file {wdbfile} is empty"
 
 
 @pytest.mark.parametrize("xsi", [VHDL, VERILOG], indirect=True, ids=["vhdl", "sv"])
