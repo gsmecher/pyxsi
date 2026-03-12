@@ -257,6 +257,26 @@ def test_assert(xsi):
         clock(xsi)
 
 
+@pytest.mark.parametrize("xsi", [VHDL, VERILOG], indirect=True, ids=["vhdl", "sv"])
+def test_vcd(xsi, request):
+    """sim_vcd() produces a VCD file containing signal transitions."""
+    vcdfile = request.node.name + ".vcd"
+    if os.path.exists(vcdfile):
+        os.remove(vcdfile)
+
+    xsi.sim_vcd(vcdfile)
+    xsi.u_in = 0
+    clock(xsi)
+    xsi.u_in = 0xA5
+    clock(xsi)
+    xsi.sim_vcd_close()
+
+    assert os.path.exists(vcdfile), f"VCD file {vcdfile} was not created"
+    contents = open(vcdfile).read()
+    assert "$var" in contents, "VCD file missing $var declarations"
+    assert "$end" in contents, "VCD file missing $end markers"
+
+
 if __name__ == "__main__":
     import sys
     pytest.main(sys.argv)

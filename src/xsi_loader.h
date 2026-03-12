@@ -294,6 +294,20 @@ namespace Xsi {
 			void watch(const std::string &name, bool stop = false);
 			std::vector<std::string> get_changes();
 
+			// VCD dump
+			void vcd_dumpfile(const std::string &filename) {
+				_vcdDumpFile(_uas, "", filename.c_str());
+			}
+			void vcd_dumpvars(int depth = 0) {
+				_vcdDumpVarScope(_uas, 1, depth);
+			}
+			void vcd_dumpon()              { _vcdDumpOn(_uas); }
+			void vcd_dumpoff()             { _vcdDumpOff(_uas); }
+			void vcd_dumpall()             { _vcdDumpAll(_uas); }
+			void vcd_dumpflush()           { _vcdDumpFlush(_uas); }
+			void vcd_dumplimit(long long b){ _vcdDumpLimit(_uas, b); }
+			void vcd_close()               { _vcdClose(_uas); }
+
 			bool is_port(const std::string &name);
 
 		private:
@@ -334,6 +348,27 @@ namespace Xsi {
 				const HdlValueObject *hdlObj, void *traceFeature,
 				bool activate, bool, void *cookie);
 			fn_activateTrace _activateTrace = nullptr;
+
+			// VCD function pointers (resolved from simkernel)
+			using fn_vcdDumpFile      = void(*)(void *uas, const char *filename, const char *second);
+			using fn_vcdDumpVarScope  = void(*)(void *uas, int scope_id, int depth);
+			using fn_vcdDumpVarObject = void(*)(void *uas, int obj_id);
+			using fn_vcdDumpOn        = void(*)(void *uas);
+			using fn_vcdDumpOff       = void(*)(void *uas);
+			using fn_vcdDumpAll       = void(*)(void *uas);
+			using fn_vcdDumpFlush     = void(*)(void *uas);
+			using fn_vcdDumpLimit     = void(*)(void *uas, long long bytes);
+			using fn_vcdClose         = void(*)(void *uas);
+
+			fn_vcdDumpFile      _vcdDumpFile = nullptr;
+			fn_vcdDumpVarScope  _vcdDumpVarScope = nullptr;
+			fn_vcdDumpVarObject _vcdDumpVarObject = nullptr;
+			fn_vcdDumpOn        _vcdDumpOn = nullptr;
+			fn_vcdDumpOff       _vcdDumpOff = nullptr;
+			fn_vcdDumpAll       _vcdDumpAll = nullptr;
+			fn_vcdDumpFlush     _vcdDumpFlush = nullptr;
+			fn_vcdDumpLimit     _vcdDumpLimit = nullptr;
+			fn_vcdClose         _vcdClose = nullptr;
 
 			// Shim function pointers -- C-linkage wrappers loaded into
 			// the Vivado namespace. All std::string and heap operations

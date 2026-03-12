@@ -207,6 +207,35 @@ Loader::Loader(const std::string& design_libname, const std::string& simkernel_l
 			"_ZN5ISIMK15TraceDispatcher13activateTraceERKN4ISIM14HdlValueObjectERNS_12TraceFeatureEbbPv",
 			"ISIMK::TraceDispatcher::activateTrace(ISIM::HdlValueObject const&,");
 
+		// VCD support via UserAccessService
+		RESOLVE_MANGLED(_vcdDumpFile,
+			"_ZN5ISIMK17UserAccessService11vcdDumpFileEPKcS2_",
+			"ISIMK::UserAccessService::vcdDumpFile(");
+		RESOLVE_MANGLED(_vcdDumpVarScope,
+			"_ZN5ISIMK17UserAccessService15vcdDumpVarScopeEii",
+			"ISIMK::UserAccessService::vcdDumpVarScope(");
+		RESOLVE_MANGLED(_vcdDumpVarObject,
+			"_ZN5ISIMK17UserAccessService16vcdDumpVarObjectEi",
+			"ISIMK::UserAccessService::vcdDumpVarObject(");
+		RESOLVE_MANGLED(_vcdDumpOn,
+			"_ZN5ISIMK17UserAccessService9vcdDumpOnEv",
+			"ISIMK::UserAccessService::vcdDumpOn(");
+		RESOLVE_MANGLED(_vcdDumpOff,
+			"_ZN5ISIMK17UserAccessService10vcdDumpOffEv",
+			"ISIMK::UserAccessService::vcdDumpOff(");
+		RESOLVE_MANGLED(_vcdDumpAll,
+			"_ZN5ISIMK17UserAccessService10vcdDumpAllEv",
+			"ISIMK::UserAccessService::vcdDumpAll(");
+		RESOLVE_MANGLED(_vcdDumpFlush,
+			"_ZN5ISIMK17UserAccessService12vcdDumpFlushEv",
+			"ISIMK::UserAccessService::vcdDumpFlush(");
+		RESOLVE_MANGLED(_vcdDumpLimit,
+			"_ZN5ISIMK17UserAccessService12vcdDumpLimitEx",
+			"ISIMK::UserAccessService::vcdDumpLimit(");
+		RESOLVE_MANGLED(_vcdClose,
+			"_ZN5ISIMK17UserAccessService8vcdCloseEv",
+			"ISIMK::UserAccessService::vcdClose(");
+
 		// Resolve GlobalDesignProperties to locate the interrupt flag byte.
 		// interruptSimulation() sets bit 2 (0x04) at GlobalDesignProperties->0x62f;
 		// the event loop polls this and returns when set.

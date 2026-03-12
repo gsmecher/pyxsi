@@ -3,6 +3,7 @@
 *.jou
 *.log
 *.wdb
+*.vcd
 *.o
 *.so
 __pycache__

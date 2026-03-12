@@ -239,6 +239,15 @@ class _XSI {
 			return std::pow(10.0, exponent);
 		}
 
+		void sim_vcd(const std::string &filename, int depth = 0) {
+			loader->vcd_dumpfile(filename);
+			loader->vcd_dumpvars(depth);
+		}
+		void sim_vcd_on()    { loader->vcd_dumpon(); }
+		void sim_vcd_off()   { loader->vcd_dumpoff(); }
+		void sim_vcd_flush() { loader->vcd_dumpflush(); }
+		void sim_vcd_close() { loader->vcd_close(); }
+
 		// Override the auto-detected type for a signal.
 		// Accepts either positional (name, type) or keyword arguments
 		// (signal_name=type, ...) for bulk assignment.
@@ -336,6 +345,11 @@ PYBIND11_MODULE(_pyxsi, m) {
 		.def("sim_get_changes", &_XSI::sim_get_changes)
 		.def("sim_precision", &_XSI::sim_precision)
 		.def("sim_type", &_XSI::sim_type)
+		.def("sim_vcd", &_XSI::sim_vcd, py::arg("filename"), py::arg("depth")=0)
+		.def("sim_vcd_on", &_XSI::sim_vcd_on)
+		.def("sim_vcd_off", &_XSI::sim_vcd_off)
+		.def("sim_vcd_flush", &_XSI::sim_vcd_flush)
+		.def("sim_vcd_close", &_XSI::sim_vcd_close)
 
 		.def("__getattr__", &_XSI::getattr)
 		.def("__setattr__", &_XSI::setattr)
