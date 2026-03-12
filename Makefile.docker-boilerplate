@@ -19,6 +19,7 @@ XILINX_ROOT=$(realpath $(XILINX_VIVADO)/../..)
 $(MAKECMDGOALS) default: $(DOCKERSTAMP)
 	@echo Moving inside Docker...
 	@docker run								\
+		$(if $(findstring python3,$(MAKECMDGOALS)),-it)			\
 		-u $(shell id -u):$(shell id -g)				\
 		-v $(REPO_ROOT):/root						\
 		-v $(XILINX_ROOT):/$(XILINX_ROOT)				\

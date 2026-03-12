@@ -37,6 +37,9 @@ rtl:
 		xelab work.dut -prj rtl/dut_v.prj -debug all -dll -s dut_v && \
 		xelab work.dut -prj rtl/dut_v.prj -debug all -dll -generic_top WIDTH=64 -s dut_wide_v
 
+ipython3: _pyxsi.so
+	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o ipython3
+
 test: _pyxsi.so
 	LD_LIBRARY_PATH=$(XILINX_VIVADO)/lib/lnx64.o py/test.py -v -s
 

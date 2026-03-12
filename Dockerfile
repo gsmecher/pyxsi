@@ -13,6 +13,7 @@ RUN apt-get update -qq								\
 	&& apt-get install -y --no-install-recommends				\
 			ca-certificates						\
 			make build-essential g++				\
+			ipython3						\
 			python3 python3-dev					\
 			python3-pytest python3-pytest-forked			\
 			libfmt-dev pybind11-dev python3-pybind11		\
