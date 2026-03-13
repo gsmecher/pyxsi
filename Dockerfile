@@ -5,7 +5,6 @@ FROM ubuntu:24.04
 MAINTAINER "Graeme Smecher <gsmecher@threespeedlogic.com>"
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV LD_LIBRARY_PATH=.:${XILINX_VIVADO}/lib/lnx64.o:${XILINX_VIVADO}/lib/lnx64.o/Ubuntu
 
 WORKDIR /root
 
@@ -17,7 +16,7 @@ RUN apt-get update -qq								\
 			python3 python3-dev					\
 			python3-pytest python3-pytest-forked			\
 			libfmt-dev pybind11-dev python3-pybind11		\
-			locales wget valgrind					\
+			locales wget valgrind patchelf				\
 			libx11-6						\
 		&& rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 

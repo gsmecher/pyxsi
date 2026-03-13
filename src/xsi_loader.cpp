@@ -16,11 +16,8 @@ using namespace Xsi;
 // corruption of xsim's global state and mysterious segfaults).
 static std::set<std::string> _loaded_designs;
 
-// Process-wide dlmopen namespace for Vivado libraries. Created once
-// (glibc never reclaims namespace slots, so we must reuse). Simkernel
-// stays loaded for the process lifetime; design .so is loaded/unloaded
-// per Loader instance.
-static Lmid_t _vivado_lmid = LM_ID_NEWLM;  // LM_ID_NEWLM = not yet created
+// Simkernel stays loaded for the process lifetime; design .so is
+// loaded/unloaded per Loader instance.
 static void *_simkernel_persistent = nullptr;
 
 static std::string canonical_path(const std::string &path) {
@@ -130,21 +127,19 @@ Loader::Loader(const std::string& design_libname, const std::string& simkernel_l
 	_loaded_designs.insert(_canonical_design_path);
 
 	try {
-		// Load simkernel into an isolated linker namespace (persistent,
-		// because glibc never reclaims dlmopen namespace slots).
+		// Load simkernel (persistent -- stays loaded for process lifetime).
 		if(!_simkernel_persistent) {
-			_simkernel_persistent = dlmopen(LM_ID_NEWLM,
-				simkernel_libname.c_str(), RTLD_LAZY);
+			_simkernel_persistent = dlopen(
+				simkernel_libname.c_str(), RTLD_LAZY | RTLD_GLOBAL);
 			if(!_simkernel_persistent)
 				throw std::runtime_error(fmt::format(
 					"Unable to load simulator library {}: {}",
 					simkernel_libname, dlerror()));
-			dlinfo(_simkernel_persistent, RTLD_DI_LMID, &_vivado_lmid);
 		}
 		void *simkernel = _simkernel_persistent;
 
-		// Load design into the same namespace.
-		if(!(design = dlmopen(_vivado_lmid, design_libname.c_str(), RTLD_LAZY)))
+		// Load design.
+		if(!(design = dlopen(design_libname.c_str(), RTLD_LAZY)))
 			throw std::runtime_error(fmt::format("Unable to load design library {}: {}",
 				design_libname, dlerror()));
 
@@ -250,10 +245,9 @@ Loader::Loader(const std::string& design_libname, const std::string& simkernel_l
 		if(!_globalDP)
 			throw std::runtime_error("Unable to resolve ISIMK::GlobalDP");
 
-		// Load xsi_shim.so into the Vivado namespace. The shim provides
-		// C-linkage wrappers for operations that involve std::string or
-		// heap allocation, keeping those on the far side of the boundary.
-		if(!(_shim = dlmopen(_vivado_lmid, shim_libname.c_str(), RTLD_LAZY)))
+		// Load xsi_shim.so. The shim provides C-linkage wrappers for
+		// operations that involve std::string or heap allocation.
+		if(!(_shim = dlopen(shim_libname.c_str(), RTLD_LAZY)))
 			throw std::runtime_error(fmt::format(
 				"Unable to load xsi_shim.so: {}", dlerror()));
 
@@ -339,8 +333,7 @@ void Loader::init_hierarchy() {
 		throw std::runtime_error("Design library path must contain a directory component.");
 	std::string dbg_path = _design_libname.substr(0, slash + 1) + "xsim.dbg";
 
-	// shim_dbg_create allocates, constructs, and validates the DbgManager
-	// entirely on the far side of the dlmopen boundary.
+	// shim_dbg_create allocates, constructs, and validates the DbgManager.
 	_dbg = _shim_dbg_create(dbg_path.c_str());
 	if(!_dbg)
 		throw std::runtime_error(
