@@ -3,8 +3,10 @@
 *.jou
 *.log
 *.wdb
+*.vcd
 *.o
+*.so
 __pycache__
-pyxsi.so
 xelab.pb
 xsim.dir
+core.*

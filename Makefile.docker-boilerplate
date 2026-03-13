@@ -1,12 +1,3 @@
-.PHONY: $(MAKECMDGOALS) dockerenv
-
-# Learn where the git repository lives, and what subdirectory we're working in.
-REPO_ROOT := $(shell git rev-parse --show-toplevel)
-REPO_SUBDIR := $(shell git rev-parse --show-prefix)
-
-DOCKERSTAMP := $(REPO_ROOT)/.dockerenv-$(shell hostname)
-DOCKERNAME := pyxsi-docker
-
 # Unfortunately there are two conventions for Vivado's install path:
 #
 # 2025.1 and newer: /opt/xilinx/2025.1/Vivado
@@ -16,18 +7,28 @@ DOCKERNAME := pyxsi-docker
 XILINX_ROOT=$(realpath $(XILINX_VIVADO)/../..)
 
 # Use Docker to build the document per the rest of this Makefile.
-$(MAKECMDGOALS) default: $(DOCKERSTAMP)
+# Use a single sentinel target so Docker is invoked exactly once,
+# even when multiple goals are specified (e.g. "make clean rtl test").
+
+DOCKERSTAMP := .dockerenv-$(shell hostname)
+DOCKERNAME := pyxsi-docker
+
+$(MAKECMDGOALS) default: dockerrun
+.PHONY: $(MAKECMDGOALS) dockerenv dockerrun
+
+# Rebuild the Docker image when necessary
+$(DOCKERSTAMP) dockerenv: Dockerfile
+	docker build -t $(DOCKERNAME) .
+	touch $(DOCKERSTAMP)
+
+# Move inside Docker and re-invoke make
+dockerrun: $(DOCKERSTAMP)
 	@echo Moving inside Docker...
 	@docker run								\
+		$(if $(findstring python3,$(MAKECMDGOALS)),-it)			\
 		-u $(shell id -u):$(shell id -g)				\
-		-v $(REPO_ROOT):/root						\
+		-v .:/root							\
 		-v $(XILINX_ROOT):/$(XILINX_ROOT)				\
 		-e XILINX_VIVADO -e XILINX_HLS -e XILINX_VITIS			\
 		$(DOCKERNAME)							\
-		make -C /root/$(REPO_SUBDIR) $(MAKECMDGOALS)
-
-# We need to re-build the Docker image anytime Dockerfile changes, or if we
-# haven't done this before.
-$(DOCKERSTAMP) dockerenv: $(REPO_ROOT)/Dockerfile
-	docker build -t $(DOCKERNAME) $(REPO_ROOT)
-	touch $(DOCKERSTAMP)
+		make -C /root $(MAKECMDGOALS)
