@@ -104,9 +104,6 @@ static std::vector<unsigned char> encode_value(const std::string &value, bool is
 // These were determined empirically and may change across Vivado versions.
 // ---------------------------------------------------------------------------
 
-// XSIHost: offset to UserAccessService*
-constexpr size_t iki_XSIHost_uas_offset = 0x470;
-
 // ScopeInfo field offsets
 constexpr size_t iki_ScopeInfo_child_scope_count = 0x0c;
 constexpr size_t iki_ScopeInfo_first_child_scope = 0x10;
@@ -236,7 +233,60 @@ Loader::Loader(const std::string& design_libname, const std::string& simkernel_l
 }
 
 void Loader::init_hierarchy() {
-	if(!(_uas = *(void**)((char*)_design_handle + iki_XSIHost_uas_offset)))
+	// Recover the XSIHost -> UserAccessService* field offset. The offset
+	// drifts between Vivado releases, so we read it from two independent
+	// XSIHost thunks (getValue / putValue). Each begins by reloading %rdi
+	// (this) with this->uas before tail-calling UserAccessService, so the
+	// displacement in its first mov is the offset we want. We require both
+	// anchors to agree and bound-check the result.
+	ssize_t uas_offset = -1;
+	static const char *anchors[] = {
+		"_ZN5ISIMK7XSIHost8getValueEiPc",   // XSIHost::getValue(int, char*)
+		"_ZN5ISIMK7XSIHost8putValueEiPKc",  // XSIHost::putValue(int, char const*)
+	};
+	for(const char *sym : anchors) {
+		dlerror();
+		auto *code = (const unsigned char *)dlsym(simkernel, sym);
+		if(!code)
+			throw std::runtime_error(fmt::format(
+				"Cannot resolve {} to discover UAS offset: {}",
+				sym, dlerror()));
+
+		// Scan for the first `mov <disp32>(%rdi), %rdi` (48 8b bf <disp32>)
+		// or its disp8 form (48 8b 7f <disp8>) near the function entry.
+		ssize_t disp = -1;
+		for(size_t i = 0; i + 4 <= 64; i++) {
+			if(code[i] != 0x48 || code[i+1] != 0x8b)
+				continue;
+			if(code[i+2] == 0xbf) { // disp32
+				uint32_t d;
+				std::memcpy(&d, code + i + 3, sizeof(d));
+				disp = d;
+				break;
+			}
+			if(code[i+2] == 0x7f) { // disp8 (offsets are always positive)
+				disp = (unsigned char)code[i+3];
+				break;
+			}
+		}
+		if(disp == -1)
+			throw std::runtime_error(fmt::format(
+				"Could not locate UAS-load instruction in {}.", sym));
+
+		// Bound-check: plausible field offset, pointer-aligned.
+		if(disp < 0x100 || disp > 0x4000 || (disp & 0x7))
+			throw std::runtime_error(fmt::format(
+				"Implausible UAS offset 0x{:x} from {}.", disp, sym));
+
+		if(uas_offset == -1)
+			uas_offset = disp;
+		else if(uas_offset != disp)
+			throw std::runtime_error(fmt::format(
+				"UAS offset anchors disagree: 0x{:x} vs 0x{:x}.",
+				uas_offset, disp));
+	}
+
+	if(!(_uas = *(void**)((char*)_design_handle + uas_offset)))
 		throw std::runtime_error("Hierarchy init: UserAccessService pointer is null");
 
 	// xsim.dbg is placed next to xsimk.so by xelab.
